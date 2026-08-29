@@ -2,8 +2,12 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Repo GitHub Pages jest serwowane pod /<nazwa-repo>/, nie pod domeną wprost.
+const base = '/carlog/'
+
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -13,7 +17,8 @@ export default defineConfig({
         name: 'CarLog',
         short_name: 'CarLog',
         description: 'Planer serwisu, terminów prawnych i budżetu samochodu',
-        start_url: '/',
+        start_url: base,
+        scope: base,
         display: 'standalone',
         background_color: '#f5f6f8',
         theme_color: '#2563eb',
