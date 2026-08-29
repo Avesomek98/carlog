@@ -8,6 +8,7 @@ export interface VinDecodeResult {
   drivetrain?: Drivetrain;
   fuelType?: FuelType;
   engineCapacity?: number;
+  enginePowerKw?: number;
 }
 
 // Darmowe, publiczne API NHTSA (USA) - bez klucza. Dekoduje VIN globalnie wg
@@ -33,12 +34,13 @@ export async function decodeVin(vin: string): Promise<VinDecodeResult> {
   const drivetrain = normalizeDrivetrain(r?.DriveType);
   const fuelType = normalizeFuelType(r?.FuelTypePrimary, r?.ElectrificationLevel);
   const engineCapacity = parseEngineCapacity(r?.DisplacementCC, r?.DisplacementL);
+  const enginePowerKw = parseEnginePowerKw(r?.EngineKW, r?.EngineHP);
 
   if (!make && !model && !year) {
     throw new Error('Nie znaleziono danych dla tego VIN - wpisz dane ręcznie');
   }
 
-  return { make, model, year, doors, drivetrain, fuelType, engineCapacity };
+  return { make, model, year, doors, drivetrain, fuelType, engineCapacity, enginePowerKw };
 }
 
 function toTitleCase(s: string): string {
@@ -79,6 +81,20 @@ function parseEngineCapacity(cc: string | undefined, liters: string | undefined)
   if (liters) {
     const n = Number(liters);
     if (Number.isFinite(n) && n > 0) return Math.round(n * 1000);
+  }
+  return undefined;
+}
+
+const HP_TO_KW = 0.745699872;
+
+function parseEnginePowerKw(kw: string | undefined, hp: string | undefined): number | undefined {
+  if (kw) {
+    const n = Number(kw);
+    if (Number.isFinite(n) && n > 0) return Math.round(n);
+  }
+  if (hp) {
+    const n = Number(hp);
+    if (Number.isFinite(n) && n > 0) return Math.round(n * HP_TO_KW);
   }
   return undefined;
 }

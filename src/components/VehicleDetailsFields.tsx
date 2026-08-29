@@ -1,4 +1,5 @@
 import { DRIVETRAINS, FUEL_TYPES, type Drivetrain, type FuelType } from '../types';
+import { kwToHp } from '../utils/power';
 
 export interface VehicleDetailsValue {
   make: string;
@@ -8,6 +9,7 @@ export interface VehicleDetailsValue {
   drivetrain: Drivetrain | '';
   fuelType: FuelType | '';
   engineCapacity: string;
+  enginePowerKw: string;
 }
 
 export default function VehicleDetailsFields({
@@ -17,6 +19,9 @@ export default function VehicleDetailsFields({
   value: VehicleDetailsValue;
   onChange: (patch: Partial<VehicleDetailsValue>) => void;
 }) {
+  const kwNum = Number(value.enginePowerKw);
+  const hpHint = value.enginePowerKw && Number.isFinite(kwNum) && kwNum > 0 ? `≈ ${kwToHp(kwNum)} KM` : null;
+
   return (
     <div className="form-grid">
       <label>
@@ -61,6 +66,11 @@ export default function VehicleDetailsFields({
       <label>
         Pojemność (cm³)
         <input className="input" type="number" placeholder="np. 1998" value={value.engineCapacity} onChange={(e) => onChange({ engineCapacity: e.target.value })} />
+      </label>
+      <label>
+        Moc (kW)
+        <input className="input" type="number" placeholder="np. 245" value={value.enginePowerKw} onChange={(e) => onChange({ enginePowerKw: e.target.value })} />
+        {hpHint && <span className="power-hint">{hpHint}</span>}
       </label>
     </div>
   );

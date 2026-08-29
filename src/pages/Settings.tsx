@@ -8,9 +8,10 @@ import VinLookupField from '../components/VinLookupField';
 import VehicleDetailsFields, { type VehicleDetailsValue } from '../components/VehicleDetailsFields';
 import { Check as IconCheck, Plus as IconPlus, Trash2 as IconTrash } from 'lucide-react';
 import Skeleton from '../components/Skeleton';
+import { kwToHp } from '../utils/power';
 import type { Unit } from '../types';
 
-const EMPTY_DETAILS: VehicleDetailsValue = { make: '', model: '', year: '', doors: '', drivetrain: '', fuelType: '', engineCapacity: '' };
+const EMPTY_DETAILS: VehicleDetailsValue = { make: '', model: '', year: '', doors: '', drivetrain: '', fuelType: '', engineCapacity: '', enginePowerKw: '' };
 
 export default function Settings() {
   const { vehicleId, vehicle, loaded } = useActiveVehicle();
@@ -39,6 +40,7 @@ export default function Settings() {
       drivetrain: vehicle!.drivetrain ?? '',
       fuelType: vehicle!.fuelType ?? '',
       engineCapacity: vehicle!.engineCapacity ? String(vehicle!.engineCapacity) : '',
+      enginePowerKw: vehicle!.enginePowerKw ? String(vehicle!.enginePowerKw) : '',
     });
     setVin(vehicle!.vin ?? '');
     setEditingVehicle(true);
@@ -56,6 +58,7 @@ export default function Settings() {
       drivetrain: details.drivetrain || undefined,
       fuelType: details.fuelType || undefined,
       engineCapacity: details.engineCapacity ? Number(details.engineCapacity) : undefined,
+      enginePowerKw: details.enginePowerKw ? Number(details.enginePowerKw) : undefined,
     });
     setEditingVehicle(false);
   }
@@ -143,6 +146,7 @@ export default function Settings() {
                       ...(result.drivetrain ? { drivetrain: result.drivetrain } : {}),
                       ...(result.fuelType ? { fuelType: result.fuelType } : {}),
                       ...(result.engineCapacity ? { engineCapacity: String(result.engineCapacity) } : {}),
+                      ...(result.enginePowerKw ? { enginePowerKw: String(result.enginePowerKw) } : {}),
                     });
                   }}
                 />
@@ -164,6 +168,7 @@ export default function Settings() {
                       vehicle.drivetrain,
                       vehicle.fuelType,
                       vehicle.engineCapacity && `${vehicle.engineCapacity} cm³`,
+                      vehicle.enginePowerKw && `${vehicle.enginePowerKw} kW (${kwToHp(vehicle.enginePowerKw)} KM)`,
                     ].filter(Boolean).join(' · ') || 'Brak dodatkowych danych'}
                   </p>
                   {vehicle.vin && <p className="muted small">VIN: {vehicle.vin}</p>}

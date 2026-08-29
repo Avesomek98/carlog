@@ -15,6 +15,7 @@ export default function AddVehicleForm({ onDone }: { onDone: () => void }) {
     drivetrain: '',
     fuelType: '',
     engineCapacity: '',
+    enginePowerKw: '',
   });
   const [mileage, setMileage] = useState('');
 
@@ -35,6 +36,7 @@ export default function AddVehicleForm({ onDone }: { onDone: () => void }) {
       drivetrain: details.drivetrain || undefined,
       fuelType: details.fuelType || undefined,
       engineCapacity: details.engineCapacity ? Number(details.engineCapacity) : undefined,
+      enginePowerKw: details.enginePowerKw ? Number(details.enginePowerKw) : undefined,
       mileage: mileageNum,
       unit: 'km',
     });
@@ -58,6 +60,7 @@ export default function AddVehicleForm({ onDone }: { onDone: () => void }) {
             ...(result.drivetrain ? { drivetrain: result.drivetrain } : {}),
             ...(result.fuelType ? { fuelType: result.fuelType } : {}),
             ...(result.engineCapacity ? { engineCapacity: String(result.engineCapacity) } : {}),
+            ...(result.enginePowerKw ? { enginePowerKw: String(result.enginePowerKw) } : {}),
           });
         }}
       />

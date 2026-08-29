@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useActiveVehicle } from '../hooks/useActiveVehicle';
+import { useUpcomingEstimate } from '../hooks/useUpcomingEstimate';
 import { getServiceTaskStatus, getLegalDeadlineStatus, STATUS_ORDER } from '../utils/status';
 import { formatCurrency, formatDate, formatDistance, formatRemainingDays, formatRemainingKm } from '../utils/format';
 import StatusBadge from '../components/StatusBadge';
@@ -10,7 +11,8 @@ import StatTile from '../components/StatTile';
 import GaugeRing from '../components/GaugeRing';
 import Skeleton from '../components/Skeleton';
 import EmptyGarage from '../components/EmptyGarage';
-import { AlertTriangle as IconAlert, Gauge as IconGauge, ShieldCheck as IconShield, Wallet as IconWallet, Wrench as IconWrench } from 'lucide-react';
+import { AlertTriangle as IconAlert, Gauge as IconGauge, ShieldCheck as IconShield, Wallet as IconWallet, Wrench as IconWrench, ListTodo as IconIssues, TrendingUp as IconTrend } from 'lucide-react';
+import { kwToHp } from '../utils/power';
 import type { Status } from '../types';
 
 type UrgentItem = {
@@ -22,7 +24,7 @@ type UrgentItem = {
   remainingKm: number | null;
   ratio: number | null;
   href: string;
-  kind: 'service' | 'legal';
+  kind: 'service' | 'legal' | 'issue';
 };
 
 const STATUS_COLOR_VAR: Record<Status, string> = {
@@ -41,18 +43,11 @@ export default function Dashboard() {
   const { vehicleId, vehicle, loaded } = useActiveVehicle();
   const tasks = useLiveQuery(() => (vehicleId ? db.serviceTasks.where('vehicleId').equals(vehicleId).toArray() : []), [vehicleId]) ?? [];
   const deadlines = useLiveQuery(() => (vehicleId ? db.legalDeadlines.where('vehicleId').equals(vehicleId).toArray() : []), [vehicleId]) ?? [];
+  const allEntries = useLiveQuery(() => (vehicleId ? db.historyEntries.where('vehicleId').equals(vehicleId).toArray() : []), [vehicleId]) ?? [];
+  const issues = useLiveQuery(() => (vehicleId ? db.issues.where('vehicleId').equals(vehicleId).toArray() : []), [vehicleId]) ?? [];
+  const openIssues = issues.filter((i) => !i.resolved);
   const thisYear = new Date().getFullYear();
-  const yearEntries = useLiveQuery(
-    () =>
-      vehicleId
-        ? db.historyEntries
-            .where('vehicleId')
-            .equals(vehicleId)
-            .filter((e) => new Date(e.date).getFullYear() === thisYear)
-            .toArray()
-        : [],
-    [vehicleId, thisYear],
-  ) ?? [];
+  const yearEntries = allEntries.filter((e) => new Date(e.date).getFullYear() === thisYear);
   const budgetPlan = useLiveQuery(
     () => (vehicleId ? db.budgetPlans.where({ vehicleId, year: thisYear }).first() : undefined),
     [vehicleId, thisYear],
@@ -60,6 +55,8 @@ export default function Dashboard() {
 
   const [mileageInput, setMileageInput] = useState('');
   const [editingMileage, setEditingMileage] = useState(false);
+
+  const { total: estimatedUpcoming, unknownCount: estimateUnknownCount } = useUpcomingEstimate(tasks, allEntries, vehicle?.mileage ?? 0);
 
   if (!loaded) return <Skeleton />;
   if (!vehicle) return <EmptyGarage />;
@@ -96,11 +93,24 @@ export default function Dashboard() {
         kind: 'legal' as const,
       };
     }),
+    ...openIssues
+      .filter((i) => i.priority !== 'Mało ważne')
+      .map((i) => ({
+        key: `issue-${i.id}`,
+        title: i.title,
+        subtitle: i.description || 'Zgłoszona usterka',
+        status: (i.priority === 'Wpływa na sprawność' ? 'overdue' : 'soon') as Status,
+        remainingDays: null,
+        remainingKm: null,
+        ratio: null,
+        href: '/usterki',
+        kind: 'issue' as const,
+      })),
   ];
 
   const sorted = [...items].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
   const urgent = sorted.filter((i) => i.status === 'overdue' || i.status === 'soon');
-  const next = sorted.find((i) => i.status !== 'unknown') ?? sorted[0];
+  const next = sorted.filter((i) => i.kind !== 'issue').find((i) => i.status !== 'unknown') ?? sorted.find((i) => i.kind !== 'issue');
   const restUrgent = urgent.filter((i) => i.key !== next?.key);
 
   const spent = yearEntries.reduce((sum, e) => sum + e.cost, 0);
@@ -112,10 +122,15 @@ export default function Dashboard() {
   const legalItems = items.filter((i) => i.kind === 'legal');
   const nearestLegal = [...legalItems].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])[0];
 
+  const criticalIssueCount = openIssues.filter((i) => i.priority === 'Wpływa na sprawność').length;
+  const importantIssueCount = openIssues.filter((i) => i.priority === 'Ważne').length;
+  const issuesTone = criticalIssueCount > 0 ? 'overdue' : importantIssueCount > 0 ? 'soon' : 'default';
+
   const specs = [
     vehicle.fuelType,
     vehicle.drivetrain,
     vehicle.engineCapacity && `${vehicle.engineCapacity} cm³`,
+    vehicle.enginePowerKw && `${vehicle.enginePowerKw} kW (${kwToHp(vehicle.enginePowerKw)} KM)`,
     vehicle.doors && `${vehicle.doors} drzwi`,
   ].filter((s): s is string => Boolean(s));
 
@@ -192,6 +207,13 @@ export default function Dashboard() {
           tone={nearestService?.status === 'overdue' ? 'overdue' : nearestService?.status === 'soon' ? 'soon' : 'default'}
         />
         <StatTile
+          icon={<IconIssues size={18} />}
+          label="Usterki"
+          value={openIssues.length > 0 ? `${openIssues.length} ${openIssues.length === 1 ? 'zgłoszona' : 'zgłoszone'}` : 'Brak zgłoszeń'}
+          sub={criticalIssueCount > 0 ? `${criticalIssueCount} wpływa na sprawność` : importantIssueCount > 0 ? `${importantIssueCount} ważnych` : undefined}
+          tone={issuesTone}
+        />
+        <StatTile
           icon={<IconShield size={18} />}
           label="Terminy prawne"
           value={nearestLegal ? nearestLegal.title : 'Brak wpisów'}
@@ -204,6 +226,12 @@ export default function Dashboard() {
           value={formatCurrency(spent)}
           sub={planned > 0 ? `z ${formatCurrency(planned)} planu` : 'plan nieustawiony'}
           tone={overBudget ? 'overdue' : 'default'}
+        />
+        <StatTile
+          icon={<IconTrend size={18} />}
+          label="Prognoza kosztów"
+          value={estimatedUpcoming > 0 ? formatCurrency(estimatedUpcoming) : 'Brak danych'}
+          sub={estimateUnknownCount > 0 ? `+${estimateUnknownCount} bez historii kosztów` : estimatedUpcoming > 0 ? 'na bazie historii' : undefined}
         />
       </div>
 

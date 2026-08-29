@@ -16,13 +16,14 @@ async function base64ToBlob(dataUrl: string): Promise<Blob> {
 }
 
 export async function exportAllData(): Promise<Blob> {
-  const [vehicles, serviceTasks, historyEntries, legalDeadlines, budgetPlans, plannedServices] = await Promise.all([
+  const [vehicles, serviceTasks, historyEntries, legalDeadlines, budgetPlans, plannedServices, issues] = await Promise.all([
     db.vehicles.toArray(),
     db.serviceTasks.toArray(),
     db.historyEntries.toArray(),
     db.legalDeadlines.toArray(),
     db.budgetPlans.toArray(),
     db.plannedServices.toArray(),
+    db.issues.toArray(),
   ]);
 
   const historyEntriesSerialized = await Promise.all(
@@ -41,6 +42,7 @@ export async function exportAllData(): Promise<Blob> {
     legalDeadlines,
     budgetPlans,
     plannedServices,
+    issues,
   };
 
   return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -57,22 +59,28 @@ export async function importAllData(file: File): Promise<void> {
     })),
   );
 
-  await db.transaction('rw', [db.vehicles, db.serviceTasks, db.historyEntries, db.legalDeadlines, db.budgetPlans, db.plannedServices], async () => {
-    await Promise.all([
-      db.vehicles.clear(),
-      db.serviceTasks.clear(),
-      db.historyEntries.clear(),
-      db.legalDeadlines.clear(),
-      db.budgetPlans.clear(),
-      db.plannedServices.clear(),
-    ]);
-    await db.vehicles.bulkAdd(payload.vehicles ?? []);
-    await db.serviceTasks.bulkAdd(payload.serviceTasks ?? []);
-    await db.historyEntries.bulkAdd(historyEntries);
-    await db.legalDeadlines.bulkAdd(payload.legalDeadlines ?? []);
-    await db.budgetPlans.bulkAdd(payload.budgetPlans ?? []);
-    await db.plannedServices.bulkAdd(payload.plannedServices ?? []);
-  });
+  await db.transaction(
+    'rw',
+    [db.vehicles, db.serviceTasks, db.historyEntries, db.legalDeadlines, db.budgetPlans, db.plannedServices, db.issues],
+    async () => {
+      await Promise.all([
+        db.vehicles.clear(),
+        db.serviceTasks.clear(),
+        db.historyEntries.clear(),
+        db.legalDeadlines.clear(),
+        db.budgetPlans.clear(),
+        db.plannedServices.clear(),
+        db.issues.clear(),
+      ]);
+      await db.vehicles.bulkAdd(payload.vehicles ?? []);
+      await db.serviceTasks.bulkAdd(payload.serviceTasks ?? []);
+      await db.historyEntries.bulkAdd(historyEntries);
+      await db.legalDeadlines.bulkAdd(payload.legalDeadlines ?? []);
+      await db.budgetPlans.bulkAdd(payload.budgetPlans ?? []);
+      await db.plannedServices.bulkAdd(payload.plannedServices ?? []);
+      await db.issues.bulkAdd(payload.issues ?? []);
+    },
+  );
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

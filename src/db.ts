@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { BudgetPlan, Drivetrain, FuelType, HistoryEntry, LegalDeadline, PlannedService, ServiceTask, Vehicle } from './types';
+import type { BudgetPlan, Drivetrain, FuelType, HistoryEntry, Issue, LegalDeadline, PlannedService, ServiceTask, Vehicle } from './types';
 import { seedDefaultTasksIfEmpty } from './seed';
 
 class CarLogDB extends Dexie {
@@ -9,6 +9,7 @@ class CarLogDB extends Dexie {
   legalDeadlines!: EntityTable<LegalDeadline, 'id'>;
   budgetPlans!: EntityTable<BudgetPlan, 'id'>;
   plannedServices!: EntityTable<PlannedService, 'id'>;
+  issues!: EntityTable<Issue, 'id'>;
 
   constructor() {
     super('carlog');
@@ -19,6 +20,7 @@ class CarLogDB extends Dexie {
       legalDeadlines: '++id, vehicleId, validUntil',
       budgetPlans: '++id, vehicleId, year, [vehicleId+year]',
       plannedServices: '++id, vehicleId, plannedDate',
+      issues: '++id, vehicleId',
     });
   }
 }
@@ -34,6 +36,7 @@ export interface NewVehicleInput {
   drivetrain?: Drivetrain;
   fuelType?: FuelType;
   engineCapacity?: number;
+  enginePowerKw?: number;
   mileage: number;
   unit: 'km' | 'mi';
 }
@@ -49,12 +52,17 @@ export async function addVehicle(input: NewVehicleInput): Promise<number> {
 }
 
 export async function deleteVehicle(id: number): Promise<void> {
-  await db.transaction('rw', [db.vehicles, db.serviceTasks, db.historyEntries, db.legalDeadlines, db.budgetPlans, db.plannedServices], async () => {
-    await db.serviceTasks.where('vehicleId').equals(id).delete();
-    await db.historyEntries.where('vehicleId').equals(id).delete();
-    await db.legalDeadlines.where('vehicleId').equals(id).delete();
-    await db.budgetPlans.where('vehicleId').equals(id).delete();
-    await db.plannedServices.where('vehicleId').equals(id).delete();
-    await db.vehicles.delete(id);
-  });
+  await db.transaction(
+    'rw',
+    [db.vehicles, db.serviceTasks, db.historyEntries, db.legalDeadlines, db.budgetPlans, db.plannedServices, db.issues],
+    async () => {
+      await db.serviceTasks.where('vehicleId').equals(id).delete();
+      await db.historyEntries.where('vehicleId').equals(id).delete();
+      await db.legalDeadlines.where('vehicleId').equals(id).delete();
+      await db.budgetPlans.where('vehicleId').equals(id).delete();
+      await db.plannedServices.where('vehicleId').equals(id).delete();
+      await db.issues.where('vehicleId').equals(id).delete();
+      await db.vehicles.delete(id);
+    },
+  );
 }

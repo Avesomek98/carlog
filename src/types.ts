@@ -16,6 +16,7 @@ export interface Vehicle {
   drivetrain?: Drivetrain;
   fuelType?: FuelType;
   engineCapacity?: number; // pojemność silnika w cm3
+  enginePowerKw?: number; // moc silnika w kW
   mileage: number; // aktualny przebieg, zawsze przechowywany w km
   mileageUpdatedAt: string; // ISO date
   unit: Unit;
@@ -90,6 +91,20 @@ export interface PlannedService {
   serviceTaskId?: number; // opcjonalne powiązanie z pozycją harmonogramu
   plannedDate: string; // ISO date
   note?: string;
+}
+
+export const ISSUE_PRIORITIES = ['Wpływa na sprawność', 'Ważne', 'Mało ważne'] as const;
+export type IssuePriority = (typeof ISSUE_PRIORITIES)[number];
+
+export interface Issue {
+  id?: number;
+  vehicleId: number;
+  title: string;
+  description?: string;
+  priority: IssuePriority;
+  createdAt: string; // ISO date
+  resolved: boolean;
+  resolvedAt?: string; // ISO date
 }
 
 export type Status = 'unknown' | 'ok' | 'soon' | 'overdue';

@@ -3,7 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useActiveVehicle } from '../hooks/useActiveVehicle';
 import { formatCurrency } from '../utils/format';
-import { BUDGET_CATEGORIES, type HistoryEntry } from '../types';
+import { STATUS_ORDER } from '../utils/status';
+import { useUpcomingEstimate } from '../hooks/useUpcomingEstimate';
+import StatusBadge from '../components/StatusBadge';
+import { BUDGET_CATEGORIES, type HistoryEntry, type ServiceTask } from '../types';
 import Skeleton from '../components/Skeleton';
 import EmptyGarage from '../components/EmptyGarage';
 import DonutChart from '../components/DonutChart';
@@ -11,12 +14,14 @@ import { CATEGORY_COLORS } from '../utils/chartColors';
 
 const MONTHS = ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'];
 const EMPTY_ENTRIES: HistoryEntry[] = [];
+const EMPTY_TASKS: ServiceTask[] = [];
 
 export default function Budget() {
-  const { vehicleId, loaded } = useActiveVehicle();
+  const { vehicleId, vehicle, loaded } = useActiveVehicle();
   const [year, setYear] = useState(new Date().getFullYear());
   const entries = useLiveQuery(() => (vehicleId ? db.historyEntries.where('vehicleId').equals(vehicleId).toArray() : []), [vehicleId]) ?? EMPTY_ENTRIES;
   const plan = useLiveQuery(() => (vehicleId ? db.budgetPlans.where({ vehicleId, year }).first() : undefined), [vehicleId, year]);
+  const tasks = useLiveQuery(() => (vehicleId ? db.serviceTasks.where('vehicleId').equals(vehicleId).toArray() : []), [vehicleId]) ?? EMPTY_TASKS;
 
   const [editingPlan, setEditingPlan] = useState(false);
   const [planInput, setPlanInput] = useState('');
@@ -39,6 +44,12 @@ export default function Budget() {
     return arr;
   }, [yearEntries]);
   const maxMonth = Math.max(1, ...byMonth);
+
+  const { upcoming: upcomingRaw, total: upcomingTotal, unknownCount: upcomingUnknownCount } = useUpcomingEstimate(tasks, entries, vehicle?.mileage ?? 0);
+  const upcoming = useMemo(
+    () => [...upcomingRaw].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]),
+    [upcomingRaw],
+  );
 
   async function savePlan() {
     const amount = Number(planInput);
@@ -88,6 +99,37 @@ export default function Budget() {
           </button>
         )}
       </section>
+
+      {upcoming.length > 0 && (
+        <section className="card">
+          <h2 className="section-title">Przewidywane wydatki</h2>
+          <p className="muted small">
+            Szacunek na bazie Twojej historii dla nadchodzących/zaległych czynności serwisowych.
+          </p>
+          <ul className="item-list" style={{ marginTop: 10 }}>
+            {upcoming.map(({ task, status, estimate }) => (
+              <li key={task.id} className="row-between estimate-row">
+                <div>
+                  <p className="item-title">{task.name}</p>
+                  <StatusBadge status={status} />
+                </div>
+                <p className="estimate-value">
+                  {estimate ? formatCurrency(estimate.averageCost) : <span className="muted small">brak danych</span>}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <div className="row-between estimate-total">
+            <span className="field-label">Suma szacowana</span>
+            <span className="budget-amount" style={{ margin: 0 }}>{formatCurrency(upcomingTotal)}</span>
+          </div>
+          {upcomingUnknownCount > 0 && (
+            <p className="muted small">
+              +{upcomingUnknownCount} {upcomingUnknownCount === 1 ? 'czynność' : 'czynności'} bez wystarczającej historii kosztów (dodaj koszt przy najbliższym wpisie, żeby poprawić prognozę).
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="card">
         <h2 className="section-title">Podział na kategorie</h2>

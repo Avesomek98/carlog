@@ -476,7 +476,7 @@ a.card:hover {
 /* Stat tiles */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
@@ -528,12 +528,6 @@ a.card:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-@media (max-width: 480px) {
-  .stat-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ---------- Vehicle switcher ---------- */
@@ -802,6 +796,33 @@ a.card:hover {
 
 .vin-feedback-error {
   color: var(--status-overdue);
+}
+
+.estimate-row {
+  align-items: flex-start;
+  padding: 4px 0;
+}
+
+.estimate-row .item-title {
+  margin-bottom: 4px;
+}
+
+.estimate-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.estimate-total {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.power-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .spin {

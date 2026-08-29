@@ -1,10 +1,11 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Home as IconHome, Wrench as IconWrench, ShieldCheck as IconShield, History as IconHistory, Wallet as IconWallet, Settings as IconSettings } from 'lucide-react';
+import { Home as IconHome, Wrench as IconWrench, ListTodo as IconIssues, ShieldCheck as IconShield, History as IconHistory, Wallet as IconWallet, Settings as IconSettings } from 'lucide-react';
 import VehicleSwitcher from './VehicleSwitcher';
 
 const TABS = [
   { to: '/', label: 'Start', icon: IconHome, end: true },
   { to: '/serwis', label: 'Serwis', icon: IconWrench },
+  { to: '/usterki', label: 'Usterki', icon: IconIssues },
   { to: '/prawne', label: 'Prawne', icon: IconShield },
   { to: '/historia', label: 'Historia', icon: IconHistory },
   { to: '/budzet', label: 'Budżet', icon: IconWallet },
